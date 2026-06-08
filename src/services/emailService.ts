@@ -1,32 +1,10 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// Create the transporter — this is the Gmail connection
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Verify connection on startup
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ Email transporter error:", error.message);
-  } else {
-    console.log("✅ Email transporter ready!");
-  }
-});
-
-// Build the birthday email HTML
 const buildEmailTemplate = (username: string): string => {
   return `
     <!DOCTYPE html>
@@ -42,44 +20,18 @@ const buildEmailTemplate = (username: string): string => {
           background: #f0ede8;
           padding: 40px 16px;
         }
-        .wrapper {
-          max-width: 520px;
-          margin: 0 auto;
-        }
-        .card {
-          background: #ffffff;
-          border-radius: 16px;
-          overflow: hidden;
-        }
+        .wrapper { max-width: 520px; margin: 0 auto; }
+        .card { background: #ffffff; border-radius: 16px; overflow: hidden; }
         .top {
           background: #1a1a2e;
           padding: 40px 32px;
           text-align: center;
         }
-        .top .big {
-          font-size: 56px;
-          display: block;
-          margin-bottom: 16px;
-        }
-        .top h1 {
-          color: #ffffff;
-          font-size: 26px;
-          font-weight: 600;
-          margin-bottom: 8px;
-        }
-        .top p {
-          color: rgba(255,255,255,0.5);
-          font-size: 14px;
-        }
-        .body {
-          padding: 36px 32px;
-        }
-        .body p {
-          font-size: 15px;
-          color: #444;
-          line-height: 1.8;
-          margin-bottom: 16px;
-        }
+        .top .big { font-size: 56px; display: block; margin-bottom: 16px; }
+        .top h1 { color: #ffffff; font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+        .top p { color: rgba(255,255,255,0.5); font-size: 14px; }
+        .body { padding: 36px 32px; }
+        .body p { font-size: 15px; color: #444; line-height: 1.8; margin-bottom: 16px; }
         .highlight {
           background: #f0ede8;
           border-radius: 10px;
@@ -87,26 +39,10 @@ const buildEmailTemplate = (username: string): string => {
           margin: 24px 0;
           text-align: center;
         }
-        .highlight p {
-          font-size: 15px;
-          color: #666;
-          margin: 0;
-          font-style: italic;
-        }
-        .accent {
-          color: #f4a261;
-          font-weight: 600;
-        }
-        .footer {
-          padding: 20px 32px;
-          border-top: 1px solid #f0ede8;
-          text-align: center;
-        }
-        .footer p {
-          font-size: 11px;
-          color: #bbb;
-          line-height: 1.7;
-        }
+        .highlight p { font-size: 15px; color: #666; margin: 0; font-style: italic; }
+        .accent { color: #f4a261; font-weight: 600; }
+        .footer { padding: 20px 32px; border-top: 1px solid #f0ede8; text-align: center; }
+        .footer p { font-size: 11px; color: #bbb; line-height: 1.7; }
       </style>
     </head>
     <body>
@@ -151,18 +87,20 @@ const buildEmailTemplate = (username: string): string => {
   `;
 };
 
-// Send the birthday email
 export const sendBirthdayEmail = async (
   username: string,
   email: string,
 ): Promise<void> => {
-  const mailOptions = {
-    from: `"Birthday Reminder 🎂" <${process.env.EMAIL_USER}>`,
+  const { error } = await resend.emails.send({
+    from: "Birthday Reminder <onboarding@resend.dev>",
     to: email,
     subject: `Happy Birthday, ${username}! 🎉`,
     html: buildEmailTemplate(username),
-  };
+  });
 
-  await transporter.sendMail(mailOptions);
+  if (error) {
+    throw new Error(error.message);
+  }
+
   console.log(`📧 Birthday email sent to ${username} at ${email}`);
 };
